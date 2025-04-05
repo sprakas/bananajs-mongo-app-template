@@ -1,3 +1,3 @@
 import { UserController } from './App/User/User.controller'
 
-export const Routes = [UserController]
+export const Routes = [UserController] as any
