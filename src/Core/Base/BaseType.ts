@@ -26,7 +26,7 @@ export interface IResource {
   orderBy?: string
   page?: string
   limit?: string
-  filters?: any // replace any with strong type
+  filters?: string
   dateFrom?: string
   dateTo?: string
 }

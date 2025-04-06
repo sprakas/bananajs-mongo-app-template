@@ -1,9 +1,9 @@
 import { Request } from 'express'
-import { Types } from 'mongoose'
 import { BaseRepo } from './BaseRepo'
 
 export type BaseRepoInterface<T> = BaseRepo<T>
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export abstract class BaseService<T extends BaseRepoInterface<any>> {
   protected repo: T
 
@@ -11,23 +11,23 @@ export abstract class BaseService<T extends BaseRepoInterface<any>> {
     this.repo = new Repo()
   }
 
-  async crete(req: Request) {
-    return this.repo.create(req.body)
+  async crete({ body }: Request) {
+    return this.repo.create(body)
   }
 
-  async list(req: Request) {
-    return this.repo.find(req)
+  async list({ query }: Request) {
+    return this.repo.find(query)
   }
 
-  async get(req: Request) {
-    return this.repo.findById<T>(new Types.ObjectId(req.params.id))
+  async get({ params }: Request) {
+    return this.repo.findById(params.id)
   }
 
-  async update(req: Request) {
-    return this.repo.update(new Types.ObjectId(req.params.id), req.body)
+  async update({ params, body }: Request) {
+    return this.repo.update(params.id, body)
   }
 
-  async delete(req: Request) {
-    return this.repo.delete(new Types.ObjectId(req.params.id))
+  async delete({ params }: Request) {
+    return this.repo.delete(params.id)
   }
 }

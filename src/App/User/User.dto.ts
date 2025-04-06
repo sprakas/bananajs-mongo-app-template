@@ -18,6 +18,11 @@ export class GetUserByIdDto {
   id!: string
 }
 
+export class DeleteUserByIdDto {
+  @IsString()
+  id!: string
+}
+
 export class GetUserListDto {
   @IsString()
   page!: string

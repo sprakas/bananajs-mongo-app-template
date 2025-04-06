@@ -1,5 +1,7 @@
-import { FilterQuery, Model, Types } from 'mongoose'
+import { DeleteResult, FilterQuery, Model, Types, UpdateWriteOpResult } from 'mongoose'
 import { IResource, IResourceOptions, IRepoOptions } from './BaseType'
+
+type ObjectId = Types.ObjectId | string
 
 export abstract class BaseRepo<T> {
   protected collection: Model<T>
@@ -9,14 +11,13 @@ export abstract class BaseRepo<T> {
   }
 
   /**
-   * Creates a new document in the collection.
+   * Inserts a single document into the collection.
    *
-   * @param data - The data of type T to be inserted into the collection.
-   * @param options - Optional settings for the creation process, including session control.
-   * @returns The created document as a plain JavaScript object.
+   * @param data - The document of type T to be inserted into the collection.
+   * @param options - Optional settings for the insertion process, including session control.
+   * @returns The inserted document as a plain JavaScript object.
    */
-
-  async create(data: T, options?: IRepoOptions) {
+  async create(data: T, options?: IRepoOptions): Promise<T> {
     const created = await this.collection.create([data], { session: options?.session })
     return created?.[0]?.toObject()
   }
@@ -28,8 +29,21 @@ export abstract class BaseRepo<T> {
    * @param options - Optional settings for the insertion process, including session control.
    * @returns The inserted documents as a plain JavaScript array.
    */
-  async insertMany(data: T[], options?: IRepoOptions) {
+  async insertMany(data: T[], options?: IRepoOptions): Promise<T[]> {
     return await this.collection.insertMany(data, { session: options?.session })
+  }
+
+  /**
+   * Performs multiple write operations in bulk on the collection.
+   *
+   * @param data - An array of write operations to perform in bulk.
+   * @param options - Optional settings for the bulk write process, including session control.
+   * @returns The result of the bulk write operation.
+   */
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async bulkWrite(data: any, options?: IRepoOptions) {
+    return this.collection.bulkWrite(data, { session: options?.session })
   }
 
   /**
@@ -40,9 +54,53 @@ export abstract class BaseRepo<T> {
    * @param options - Optional settings for the update process, including session control and return options.
    * @returns The updated document as a plain JavaScript object.
    */
-  async update(id: Types.ObjectId, data: any, options?: IRepoOptions): Promise<any> {
+  async update(id: ObjectId, data: Partial<T>, options?: IRepoOptions): Promise<T | null> {
     return this.collection
       .findByIdAndUpdate(id, data, {
+        new: options?.new !== undefined ? options?.new : true,
+        session: options?.session,
+      })
+      .lean()
+      .exec() as T
+  }
+
+  /**
+   * Updates a single document in the collection based on the provided search object.
+   *
+   * @param searchObject - The search object to find the document to update.
+   * @param data - The data to update the document with.
+   * @param options - Optional settings for the update process, including session control and return options.
+   * @returns The updated document as a plain JavaScript object.
+   */
+  async updateOne(
+    searchObject: Partial<T>,
+    data: Partial<T>,
+    options?: IRepoOptions,
+  ): Promise<T | null> {
+    return this.collection
+      .findOneAndUpdate(searchObject, data, {
+        new: options?.new !== undefined ? options?.new : true,
+        session: options?.session,
+      })
+      .lean()
+      .exec() as T
+  }
+
+  /**
+   * Updates multiple documents in the collection based on the provided query object.
+   *
+   * @param query - The query object used to filter and retrieve documents from the collection.
+   * @param data - The data to update the documents with.
+   * @param options - Optional settings for the update process, including session control and return options.
+   * @returns The updated documents as plain JavaScript objects.
+   */
+  async updateMany(
+    query: Partial<T>,
+    data: Partial<T>,
+    options?: IRepoOptions,
+  ): Promise<UpdateWriteOpResult> {
+    return this.collection
+      .updateMany(query, data, {
         new: options?.new !== undefined ? options?.new : true,
         session: options?.session,
       })
@@ -57,29 +115,11 @@ export abstract class BaseRepo<T> {
    * @param options - Optional settings for the deletion process, including session control and return options.
    * @returns The deleted document as a plain JavaScript object.
    */
-  async delete(id: Types.ObjectId, options?: IRepoOptions): Promise<any> {
+  async delete(id: ObjectId, options?: IRepoOptions): Promise<T> {
     return this.collection
       .findByIdAndUpdate(id, { isDeleted: true }, { new: true, session: options?.session })
       .lean()
-      .exec()
-  }
-
-  /**
-   * Updates a single document in the collection based on the provided search object.
-   *
-   * @param searchObject - The search object to find the document to update.
-   * @param data - The data to update the document with.
-   * @param options - Optional settings for the update process, including session control and return options.
-   * @returns The updated document as a plain JavaScript object.
-   */
-  async updateOne(searchObject: object, data: any, options?: IRepoOptions): Promise<any> {
-    return this.collection
-      .findOneAndUpdate(searchObject, data, {
-        new: options?.new !== undefined ? options?.new : true,
-        session: options?.session,
-      })
-      .lean()
-      .exec()
+      .exec() as T
   }
 
   /**
@@ -89,9 +129,25 @@ export abstract class BaseRepo<T> {
    * @param options - Optional settings for the deletion process, including session control.
    * @returns The soft-deleted document as a plain JavaScript object.
    */
-  async deleteOne(data: object, options?: IRepoOptions): Promise<any> {
+  async deleteOne(data: Partial<T>, options?: IRepoOptions): Promise<T | null> {
     return this.collection
       .findOneAndUpdate(data, { isDeleted: true }, { new: true, session: options?.session })
+      .lean()
+      .exec() as T
+  }
+
+  /**
+   * Deletes multiple documents in the collection based on the provided query object.
+   *
+   * @param filters - The query object used to filter and retrieve documents from the collection.
+   * @param options - Optional settings for the deletion process, including session control.
+   * @returns The deleted count of documents.
+   */
+  async deleteMany(filters: Partial<T>, options?: IRepoOptions): Promise<DeleteResult> {
+    return await this.collection
+      .deleteMany(filters, {
+        session: options?.session,
+      })
       .lean()
       .exec()
   }
@@ -102,8 +158,8 @@ export abstract class BaseRepo<T> {
    * @param id - The ObjectId of the document to find.
    * @returns The found document as a plain JavaScript object.
    */
-  async findById<T>(id: Types.ObjectId) {
-    return this.collection.findOne({ _id: id }).lean().exec() as Promise<T>
+  async findById(id: ObjectId): Promise<T> {
+    return this.collection.findOne({ _id: id }).lean().exec() as T
   }
 
   /**
@@ -112,8 +168,8 @@ export abstract class BaseRepo<T> {
    * @param query - The query object to filter the documents.
    * @returns The found document as a plain JavaScript object.
    */
-  async findOne(query: FilterQuery<T>) {
-    return this.collection.findOne(query).lean().exec() as Promise<T>
+  async findOne(query: FilterQuery<T>): Promise<T> {
+    return this.collection.findOne(query).lean().exec() as T
   }
 
   /**
@@ -145,7 +201,10 @@ export abstract class BaseRepo<T> {
    * @param options - The optional settings for the query, including the search fields and date range.
    * @returns The filtered documents as a plain JavaScript array, along with the total count of matching documents.
    */
-  async list(params?: IResource, options?: IResourceOptions) {
+  async list(
+    params?: IResource,
+    options?: IResourceOptions,
+  ): Promise<{ items: T[]; totalCount: number }> {
     const {
       search,
       orderBy = 'updatedAt',
@@ -165,13 +224,13 @@ export abstract class BaseRepo<T> {
         ...options.searchFields.map((searchField) => {
           return { [searchField]: item }
         }),
-      ] as any)
+      ] as Partial<T>[])
     }
     if (filters) {
       let parsedFilters
       try {
         parsedFilters = JSON.parse(filters)
-      } catch (err) {
+      } catch {
         parsedFilters = {}
       }
       // @Todo: Handle null checks
@@ -211,18 +270,18 @@ export abstract class BaseRepo<T> {
    * @param filters - The filters to apply to the query. The filters should be given in the format of a JSON string.
    * @returns The modified query.
    */
-  withFilters(query: FilterQuery<T>, filters: any) {
+  withFilters(query: FilterQuery<T>, filters: string) {
     if (filters) {
-      let parsedFilters: any
+      let parsedFilters
       try {
         parsedFilters = JSON.parse(filters)
-      } catch (err) {
+      } catch {
         parsedFilters = {}
       }
       // @Todo: Handle null checks
       Object.keys(parsedFilters).forEach((field: string) => {
         if (typeof field === 'object') {
-          query.where(field).in(parsedFilters[field as string] as string[])
+          query.where(field).in(parsedFilters[field] as string[])
         } else {
           query.where(field).equals(parsedFilters[field])
         }
@@ -273,51 +332,5 @@ export abstract class BaseRepo<T> {
       items,
       totalCount,
     }
-  }
-
-  /**
-   * Performs multiple write operations in bulk on the collection.
-   *
-   * @param data - An array of write operations to perform in bulk.
-   * @param options - Optional settings for the bulk write process, including session control.
-   * @returns The result of the bulk write operation.
-   */
-
-  async bulkWrite(data: any, options?: IRepoOptions): Promise<unknown> {
-    return this.collection.bulkWrite(data, { session: options?.session })
-  }
-
-  /**
-   * Updates multiple documents in the collection based on the provided query object.
-   *
-   * @param query - The query object used to filter and retrieve documents from the collection.
-   * @param data - The data to update the documents with.
-   * @param options - Optional settings for the update process, including session control and return options.
-   * @returns The updated documents as plain JavaScript objects.
-   */
-  async updateMany(query: object, data: object, options?: IRepoOptions) {
-    return this.collection
-      .updateMany(query, data, {
-        new: options?.new !== undefined ? options?.new : true,
-        session: options?.session,
-      })
-      .lean()
-      .exec()
-  }
-
-  /**
-   * Deletes multiple documents in the collection based on the provided query object.
-   *
-   * @param filters - The query object used to filter and retrieve documents from the collection.
-   * @param options - Optional settings for the deletion process, including session control.
-   * @returns The deleted count of documents.
-   */
-  async deleteMany(filters: object, options?: IRepoOptions) {
-    return await this.collection
-      .deleteMany(filters, {
-        session: options?.session,
-      })
-      .lean()
-      .exec()
   }
 }

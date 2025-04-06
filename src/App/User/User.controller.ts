@@ -10,7 +10,7 @@ import {
   Params,
   Query,
   SuccessResponse,
-  NotFoundResponse,
+  NotFoundError,
 } from '@banana-universe/bananajs'
 import { CreateUserDto, GetUserByIdDto, GetUserListDto } from './User.dto'
 import { BaseController } from '../../Core/Base/BaseController'
@@ -40,6 +40,7 @@ export class UserController extends BaseController<UserService> {
   @Params(GetUserByIdDto)
   async get(req: Request, res: Response) {
     const response = await this.service.get(req)
+    if (!response) throw new NotFoundError()
     return new SuccessResponse('sucess', response).send(res)
   }
 
@@ -47,15 +48,15 @@ export class UserController extends BaseController<UserService> {
   @Body(CreateUserDto, true)
   async update(req: Request, res: Response) {
     const response = await this.service.update(req)
+    if (!response) throw new NotFoundError()
     return new SuccessResponse('User updated successfully!', response).send(res)
   }
 
   @Delete('/:id')
+  @Params(GetUserByIdDto)
   async delete(req: Request, res: Response) {
-    console.log('hello from deele')
     const response = await this.service.delete(req)
-    console.log(response)
-    if (!response) throw new NotFoundResponse()
+    if (!response) throw new NotFoundError()
     return new SuccessResponse('User deleted successfully!', response).send(res)
   }
 }
