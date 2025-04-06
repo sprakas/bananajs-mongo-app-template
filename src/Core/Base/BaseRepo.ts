@@ -54,7 +54,7 @@ export abstract class BaseRepo<T> {
    * @param options - Optional settings for the update process, including session control and return options.
    * @returns The updated document as a plain JavaScript object.
    */
-  async update(id: ObjectId, data: Partial<T>, options?: IRepoOptions): Promise<T | null> {
+  async update(id: ObjectId, data: Partial<T>, options?: IRepoOptions): Promise<T> {
     return this.collection
       .findByIdAndUpdate(id, data, {
         new: options?.new !== undefined ? options?.new : true,
@@ -72,11 +72,7 @@ export abstract class BaseRepo<T> {
    * @param options - Optional settings for the update process, including session control and return options.
    * @returns The updated document as a plain JavaScript object.
    */
-  async updateOne(
-    searchObject: Partial<T>,
-    data: Partial<T>,
-    options?: IRepoOptions,
-  ): Promise<T | null> {
+  async updateOne(searchObject: Partial<T>, data: Partial<T>, options?: IRepoOptions): Promise<T> {
     return this.collection
       .findOneAndUpdate(searchObject, data, {
         new: options?.new !== undefined ? options?.new : true,
@@ -129,7 +125,7 @@ export abstract class BaseRepo<T> {
    * @param options - Optional settings for the deletion process, including session control.
    * @returns The soft-deleted document as a plain JavaScript object.
    */
-  async deleteOne(data: Partial<T>, options?: IRepoOptions): Promise<T | null> {
+  async deleteOne(data: Partial<T>, options?: IRepoOptions): Promise<T> {
     return this.collection
       .findOneAndUpdate(data, { isDeleted: true }, { new: true, session: options?.session })
       .lean()
@@ -179,7 +175,7 @@ export abstract class BaseRepo<T> {
    * @param options - Optional settings for the find process, including select projection.
    * @returns The found documents as a plain JavaScript array.
    */
-  async find(data: FilterQuery<T>, options?: { select?: { [key: string]: number } }): Promise<T[]> {
+  async find(data: Partial<T>, options?: { select?: { [key: string]: number } }): Promise<T[]> {
     const query = this.collection.find(data)
     if (options?.select) {
       return query?.select(options?.select)

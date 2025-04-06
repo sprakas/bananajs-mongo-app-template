@@ -3,8 +3,7 @@ import { BaseRepo } from './BaseRepo'
 
 export type BaseRepoInterface<T> = BaseRepo<T>
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export abstract class BaseService<T extends BaseRepoInterface<any>> {
+export abstract class BaseService<T extends BaseRepoInterface<U>, U> {
   protected repo: T
 
   constructor(Repo: new () => T) {
@@ -16,7 +15,7 @@ export abstract class BaseService<T extends BaseRepoInterface<any>> {
   }
 
   async list({ query }: Request) {
-    return this.repo.find(query)
+    return this.repo.find(query as Partial<U>)
   }
 
   async get({ params }: Request) {
